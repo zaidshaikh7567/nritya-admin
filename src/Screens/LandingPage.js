@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { PeopleAltOutlined, EventAvailableTwoTone, CurrencyExchangeTwoTone, BookOnlineTwoTone, BookTwoTone, SchoolTwoTone, PersonSearch, Image, DataObject, Dataset, AddModeratorTwoTone, AdminPanelSettingsSharp } from '@mui/icons-material'; // Import Material-UI icons
 import { verifyAdminAndRole } from '../utils/firebaseUtils';
 import {AuthContext} from '../context/AuthProvider';
+import { darkThemeStyles, lightThemeStyles } from '../constants';
 
 // NOT import {AuthProvider} from '../context/AuthProvider';
 // Cannot destructure property 'login' of '(0 , react__WEBPACK_IMPORTED_MODULE_0__.useContext)(...)' as it is undefined.
@@ -13,7 +14,7 @@ function LandingPage() {
     const [password, setPassword] = useState('');
     const [loginError, setLoginError] = useState('');
 
-    const { login,isAdmin ,user,role } = useContext(AuthContext);
+    const { login, isAdmin, user, role, darkMode } = useContext(AuthContext);
 
     //console.log(isAdmin,user,role)
 
@@ -45,7 +46,7 @@ function LandingPage() {
 
     if (isAdmin) {
         return (
-            <div>
+            <div >
                 <br />
                 <Grid container spacing={3}>
                     {cardData.sort((a, b) => a.title.localeCompare(b.title)).map((item, index) => (
@@ -99,7 +100,7 @@ function LandingPage() {
                     fullWidth
                     margin="normal"
                 />
-                <Button variant="contained" color="primary" onClick={handleLogin}>
+                <Button variant="contained" color="primary" onClick={handleLogin} style={darkMode ? darkThemeStyles.toggleButton : lightThemeStyles.toggleButton}>
                     Login
                 </Button>
                 {loginError && <Typography color="error">{loginError}</Typography>}

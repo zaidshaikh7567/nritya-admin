@@ -1,5 +1,5 @@
 // src/App.js
-import React from 'react';
+import React,{useContext} from 'react';
 import Footer from './Components/Footer';
 import LandingPage from './Screens/LandingPage';
 import Header from './Components/Header';
@@ -16,12 +16,26 @@ import AdminMgmt from './Screens/AdminMgmt';
 import { ProtectedRoutes, ProtectedRoles } from './utils/ProtectedRoutes';
 import CarouselImgMgmt from './Screens/CarouselImgMgmt';
 import Data from './Screens/Data';
+import {AuthContext} from './context/AuthProvider';
+import './App.css';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+});
 
 function App() {
 
+  const { darkMode } = useContext(AuthContext);
+
   return (
     <HashRouter  >
-    
+      <ThemeProvider theme={darkMode?darkTheme:''}>
+      <CssBaseline />
+     <div >
       <Header />
       <br></br>
       <main className='py-1'  >
@@ -44,7 +58,8 @@ function App() {
           </Route>
         </Routes>
         </main>
-      
+        </div>
+        </ThemeProvider>
     
     </HashRouter>
   );

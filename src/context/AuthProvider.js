@@ -1,16 +1,21 @@
 // AuthContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import secureLocalStorage  from 'react-secure-storage';
+import secureLocalStorage from 'react-secure-storage';
 
 export const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(
-    secureLocalStorage.getItem('isAdmin') === "Yes"
+    secureLocalStorage.getItem('isAdmin') === 'Yes'
   );
   const [user, setUser] = useState(secureLocalStorage.getItem('user') || null);
-  const [role, setRole] = useState(secureLocalStorage.getItem('role') || null);
+  const [role, setRole] = useState(
+    secureLocalStorage.getItem('role') || null
+  );
+  const [darkMode, setDarkMode] = useState(
+    secureLocalStorage.getItem('darkMode') === 'true'
+  );
   const [loading, setLoading] = useState(true);
 
   const login = (userData) => {
@@ -32,6 +37,12 @@ export const AuthProvider = ({ children }) => {
     secureLocalStorage.removeItem('role');
   };
 
+  const toggleDarkMode = () => {
+    const newDarkModeState = !darkMode;
+    setDarkMode(newDarkModeState);
+    secureLocalStorage.setItem('darkMode', String(newDarkModeState));
+  };
+
   useEffect(() => {
     const storedLoggedIn = secureLocalStorage.getItem('isAdmin');
     const storedUser = secureLocalStorage.getItem('user');
@@ -41,11 +52,10 @@ export const AuthProvider = ({ children }) => {
       setUser(storedUser);
       setRole(storedRole);
     }
-    console.log(storedLoggedIn,storedUser,storedRole)
     setLoading(false);
   }, []);
 
-  const value = { isAdmin, user, role, login, logout };
+  const value = {isAdmin,user,role,darkMode,toggleDarkMode,login,logout};
 
   return (
     <AuthContext.Provider value={value}>
