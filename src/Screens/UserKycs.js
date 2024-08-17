@@ -1,8 +1,25 @@
 import React, { useState } from 'react';
 import { getKycListFromEmail, getKycListFromStatus,updateDocMerge, updateDocMergeKyc } from '../utils/firebaseUtils'; // Import your functions for fetching KYC data
-import { Card, CardContent, CardActions, Button, Typography, TextField, MenuItem, FormControl, InputLabel, Select, TextareaAutosize } from '@mui/material';
+import { Card, CardContent, CardActions, Button, Typography, TextField, MenuItem, FormControl, InputLabel, Select, TextareaAutosize, Alert } from '@mui/material';
 import { SearchIcon} from '@mui/material';
 import { Form } from 'react-bootstrap';
+
+
+const names_map = new Map([
+  ["first_name" , "First Name"],
+  ["middle_last_name" , "Middle & Last Name"],
+  ["phone_number" , "Phone Number"],
+  ["street_address" , "Street Address"],
+  ["city" , "City"],
+  ["state_province" , "State"],
+  ["state" , "State"],
+  ["zip_pin_code" , "PIN Code/ZIP"],
+  ["aadhar" , "Aadhar Number"],
+  ["gstin" , "GST Number"],
+  ["comments" , "Remark(s)"],
+  ["UserId","UserId"],
+  ['id','KYC ID']
+  ])
 
 
 const statusFlags = ['Submitted','Verified', 'Under Review', 'Reviewed', 'Verification Failed'];
@@ -12,6 +29,9 @@ function UserKycs() {
   const [searchValue, setSearchValue] = useState('');
   const [kycList, setKycList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
 
   const handleSearch = async () => {
     try {
@@ -35,11 +55,29 @@ function UserKycs() {
     }
   };
 
-  const handleSubmitChanges = (kycId,statusInput,comment,userId) => {
-
-    const statusDone = updateDocMergeKyc('UserKyc',kycId,{status:statusInput,comments:comment?comment:""},userId)
-    
+  const handleSubmitChanges = async (kycId, statusInput, comment, userId) => {
+    setStatusLoading(true);
+    setErrorMsg('');  // Reset error message
+  
+    const timeout = setTimeout(() => {
+      setStatusLoading(false);
+      setErrorMsg('Network issue or server timeout. Please try again.');
+    }, 60000);  // 60 seconds timeout
+  
+    try {
+      const statusDone = await updateDocMergeKyc('UserKyc', kycId, { status: statusInput, comments: comment ? comment : "" }, userId);
+      
+      if (statusDone) {
+        clearTimeout(timeout);
+        setStatusLoading(false);
+      }
+    } catch (error) {
+      clearTimeout(timeout);
+      setStatusLoading(false);
+      setErrorMsg('Error updating status: ' + error.message);
+    }
   };
+  
 
   return (
     <div>
@@ -72,33 +110,13 @@ function UserKycs() {
         {kycList.map((kyc) => (
           <Card key={kyc.id}>
             <CardContent>
-              <Typography variant="h5" component="div">
-               {kyc.id}
+          {Object.keys(kyc).map((key) => (
+            key !== 'status' && key !== 'hash' && key !== 'country' && key !== 'comments' && (
+              <Typography key={key} variant="body1" component="div">
+                {names_map.get(String(key))}: {kyc[key]}
               </Typography>
-              <Typography variant="body1" component="div">
-                Name: {kyc.name}
-              </Typography>
-              <Typography variant="body1" component="div">
-                Phone Number: {kyc.phoneNumber}
-              </Typography>
-              <Typography variant="body1" component="div">
-                Address: {kyc.address}
-              </Typography>
-              <Typography variant="body1" component="div">
-                State: {kyc.state}
-              </Typography>
-              <Typography variant="body1" component="div">
-                city: {kyc.city}
-              </Typography>
-              <Typography variant="body1" component="div">
-                age: {kyc.age}
-              </Typography>
-              <Typography variant="body1" component="div">
-                Status: {kyc.status}
-              </Typography>
-              <Typography variant="body1" component="div">
-                Comments: {kyc.comments?kyc.comments:""}
-              </Typography>
+            )
+          ))}
             </CardContent>
             <CardActions style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column' }}>
             <Form style={{ width: '100%' }}>
@@ -138,10 +156,12 @@ function UserKycs() {
                   style={{ flex: '1 0 45%' }}
                 />
               </div>
-              <Button variant="contained" onClick={() => handleSubmitChanges(kyc.id, kyc.status, kyc.comments,kyc.UserId)} style={{ marginTop: '10px' }}>
-                Submit Changes
+              <Button variant="contained" disabled={statusLoading} onClick={() => handleSubmitChanges(kyc.id, kyc.status, kyc.comments,kyc.UserId)} style={{ marginTop: '10px' }}>
+              {statusLoading ? 'Submitting...' : 'Submit Changes'}
               </Button>
             </Form>
+            {statusLoading && <div>Loading...</div>}
+            {errorMsg && <Alert color="error">{errorMsg}</Alert>}
           </CardActions>
 
 

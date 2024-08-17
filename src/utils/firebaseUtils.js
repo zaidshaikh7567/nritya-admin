@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, getDocs, 
 import { db } from '../config';
 import { getStorage,ref,listAll,getDownloadURL,uploadBytes, deleteObject  } from "firebase/storage";
 import { storage } from '../config';
+import { STATUSES } from '../constants';
   
 // Read operation with image URL
 export const readDocumentWithImageUrl = async (collectionName, productId) => {
@@ -347,10 +348,17 @@ export const updateDocMergeKyc = async (collectionName, kycId, data, userId) => 
     let userData = userDocSnapshot.data();
     console.log(kycId,userData.KycIdList,typeof(kycId))
     let KycIdList = userData.KycIdList
+    let CreatorMode= userData.CreatorMode
     KycIdList[kycId] = data.status
     console.log(KycIdList)
+
+    if (data.status === STATUSES.VERIFIED){
+      CreatorMode = true
+    }else{
+      CreatorMode = false
+    }
     
-    await setDoc(userDocRef, {KycIdList:KycIdList},{ merge: true });
+    await setDoc(userDocRef, {KycIdList:KycIdList,CreatorMode:CreatorMode},{ merge: true });
   }
 
   return true;

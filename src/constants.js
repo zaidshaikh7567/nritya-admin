@@ -29,4 +29,11 @@ export const darkThemeStyles = {
       margin: '10px',
     },
   };
-  
+
+  export const STATUSES = {
+    SUBMITTED: "Submitted",
+    UNDER_REVIEW: "Under Review",
+    REVIEWED: "Reviewed",
+    VERIFIED: "Verified",
+    VERIFICATION_FAILED: "Verification Failed",
+};
