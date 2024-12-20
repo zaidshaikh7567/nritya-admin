@@ -20,6 +20,7 @@ import {AuthContext} from './context/AuthProvider';
 import './App.css';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import UserKycsNew from './Screens/UserKycsNew';
 
 const darkTheme = createTheme({
   palette: {
@@ -45,7 +46,7 @@ function App() {
           <Route element={<ProtectedRoutes/>}>
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/users" element={<Users />} /> 
-            <Route path="/user-kycs" element={<UserKycs />} /> 
+            <Route path="/user-kycs" element={<UserKycsNew />} /> 
             <Route path="/studios" element={<Studios />} /> 
             <Route path="/workshops" element={<Workshops />} />  
             <Route path="/bookings" element={<Bookings />} />
