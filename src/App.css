@@ -5,3 +5,13 @@
   height: 100vh; /* Make the div fill the entire viewport height */
   width: 100%; /* Ensure the div fills the entire viewport width */
 }
+
+.hidden-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hidden-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
