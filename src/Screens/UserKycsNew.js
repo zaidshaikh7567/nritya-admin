@@ -70,7 +70,7 @@ function UserKycsNew() {
   const [runMode, setRunMode] = useState(modesList[0]);
 
   useEffect(() => {
-    fetch(`${modes[runMode].baseURL}/crud/getKyc/`)
+    fetch(`${modes[runMode].baseURL}/crud/getKyc`)
       .then((res) => res.json())
       .then((data) => setKycData(data.data))
       .catch((err) => console.error("Error fetching KYC data:", err));
@@ -95,9 +95,7 @@ function UserKycsNew() {
       return;
     }
 
-    const docUrl = `${modes[runMode].baseURL}/${
-      runMode === modes[0] ? "crud/getKycDoc" : "crud/getKyc"
-    }/${id}`;
+    const docUrl = `${modes[runMode].baseURL}/crud/getKycDoc/${id}`;
 
     fetch(docUrl)
       .then((res) => res.json())
