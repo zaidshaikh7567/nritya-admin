@@ -11,18 +11,17 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Select,
-  MenuItem,
-  TextField,
   ToggleButtonGroup,
   ToggleButton,
   Box,
+  Modal,
+  useTheme,
+  IconButton,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import { Form } from "react-bootstrap";
 import { Alert } from "@mui/lab";
+import { useLoading } from "../context/LoadingContext";
 
 const statusFlags = [
   "Submitted",
@@ -62,18 +61,57 @@ const modes = {
 const modesList = Object.keys(modes);
 
 function UserKycsNew() {
+  const { showLoading, hideLoading } = useLoading();
+  const theme = useTheme();
   const [kycData, setKycData] = useState({});
   const [selectedKyc, setSelectedKyc] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [docUrls, setDocUrls] = useState({});
   const [runMode, setRunMode] = useState(modesList[0]);
+  const [openModal, setOpenModal] = useState(false);
+
+  const tableCellStyle = {
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    borderRight: `1px solid ${theme.palette.divider}`,
+    color: theme.palette.text.primary,
+  };
+
+  const tableHeaderStyle = {
+    ...tableCellStyle,
+    backgroundColor: theme.palette.background.paper,
+    fontWeight: "bold",
+  };
+
+  const cardStyle = {
+    backgroundColor: theme.palette.background.paper,
+    color: theme.palette.text.primary,
+    borderRadius: 8,
+  };
+
+  const textAreaStyle = {
+    padding: 8,
+    width: "100%",
+    height: "auto",
+    backgroundColor: theme.palette.background.default,
+    color: theme.palette.text.primary,
+    borderColor: theme.palette.divider,
+  };
+
+  const selectStyle = {
+    padding: 12,
+    backgroundColor: theme.palette.background.default,
+    color: theme.palette.text.primary,
+    borderColor: theme.palette.divider,
+  };
 
   useEffect(() => {
+    showLoading();
     fetch(`${modes[runMode].baseURL}/crud/getKyc`)
       .then((res) => res.json())
       .then((data) => setKycData(data.data))
-      .catch((err) => console.error("Error fetching KYC data:", err));
+      .catch((err) => console.error("Error fetching KYC data:", err))
+      .finally(hideLoading);
   }, [runMode]);
 
   const handleChange = (field, value) => {
@@ -115,6 +153,15 @@ function UserKycsNew() {
       });
   }, [selectedKyc]);
 
+  const handleRowClick = (kyc, id, status) => {
+    setSelectedKyc({ ...kyc, id, status });
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+  };
+
   const handleSubmit = () => {
     if (!selectedKyc) {
       setErrorMsg("No KYC record selected.");
@@ -147,15 +194,11 @@ function UserKycsNew() {
         return response.json();
       })
       .then((data) => {
-        console.log("Success:", data);
-        // Update KYC data in the state
         setKycData((prevData) => {
           const updatedData = { ...prevData };
 
-          // Loop over all statuses and remove the entry from all of them
           Object.keys(updatedData).forEach((statusKey) => {
             if (updatedData[statusKey]?.data?.[selectedKyc.id]) {
-              // Decrease count of the old status if the entry exists
               updatedData[statusKey].count = Math.max(
                 0,
                 updatedData[statusKey].count - 1
@@ -164,19 +207,16 @@ function UserKycsNew() {
             }
           });
 
-          // Ensure the new status exists and initialize data and count if not present
           if (!updatedData[status]) {
-            updatedData[status] = { data: {}, count: 0 }; // Initialize if the status doesn't exist
+            updatedData[status] = { data: {}, count: 0 };
           }
 
-          // Add the new entry to the new status
           updatedData[status].data[selectedKyc.id] = {
             ...selectedKyc,
             status: status,
             comments: comments,
           };
 
-          // Increase the count of the new status
           updatedData[status].count = updatedData[status].count + 1;
 
           return updatedData;
@@ -201,7 +241,7 @@ function UserKycsNew() {
     }
   };
 
-  const handleRunModeChange = (event, newRunMode) => {
+  const handleRunModeChange = (_, newRunMode) => {
     if (newRunMode !== null) {
       setRunMode(newRunMode);
       setKycData({});
@@ -214,7 +254,6 @@ function UserKycsNew() {
 
   return (
     <Grid container spacing={2} sx={{ p: 2 }}>
-      {/* Top Cards */}
       <Grid item>
         <ToggleButtonGroup
           exclusive
@@ -250,13 +289,14 @@ function UserKycsNew() {
           ))}
       </Grid>
 
-      {/* Main Layout */}
       <Grid item xs={12} container spacing={2}>
-        {/* Table (Left Panel) */}
-        <Grid item xs={5}>
+        <Grid item xs={12}>
           <TableContainer
-            sx={{ borderRadius: 2, border: 1 }}
-            className="hidden-scrollbar"
+            sx={{
+              borderRadius: 2,
+              border: 1,
+              borderColor: theme.palette.divider,
+            }}
           >
             <Table
               stickyHeader
@@ -265,6 +305,7 @@ function UserKycsNew() {
                 borderStyle: "hidden",
                 "& td": {
                   border: 1,
+                  borderColor: theme.palette.divider,
                 },
               }}
             >
@@ -272,42 +313,20 @@ function UserKycsNew() {
                 <TableRow>
                   <TableCell
                     sx={{
+                      ...tableHeaderStyle,
                       minWidth: "150px",
-                      border: "1px solid black",
                       borderRadius: 2,
-                      borderCollapse: "collapse",
                     }}
                   >
                     ID
                   </TableCell>
-                  <TableCell
-                    sx={{
-                      minWidth: "150px",
-                      borderBottom: "1px solid black",
-                      borderRight: "1px solid black",
-                      borderTop: "1px solid black",
-                    }}
-                  >
+                  <TableCell sx={{ ...tableHeaderStyle, minWidth: "150px" }}>
                     First Name
                   </TableCell>
-                  <TableCell
-                    sx={{
-                      minWidth: "150px",
-                      borderBottom: "1px solid black",
-                      borderRight: "1px solid black",
-                      borderTop: "1px solid black",
-                    }}
-                  >
+                  <TableCell sx={{ ...tableHeaderStyle, minWidth: "150px" }}>
                     City
                   </TableCell>
-                  <TableCell
-                    sx={{
-                      minWidth: "150px",
-                      borderBottom: "1px solid black",
-                      borderRight: "1px solid black",
-                      borderTop: "1px solid black",
-                    }}
-                  >
+                  <TableCell sx={{ ...tableHeaderStyle, minWidth: "150px" }}>
                     Status
                   </TableCell>
                 </TableRow>
@@ -323,48 +342,24 @@ function UserKycsNew() {
                           key={id}
                           role="checkbox"
                           tabIndex={-1}
-                          onClick={() => setSelectedKyc({ ...kyc, id, status })}
+                          onClick={() => handleRowClick(kyc, id, status)}
                           style={{ cursor: "pointer" }}
                           sx={{
                             bgcolor:
                               selectedKyc?.id === id
-                                ? "rgba(224, 224, 224, 1)"
-                                : "white",
+                                ? theme.palette.action.selected
+                                : theme.palette.background.paper,
                             "&:hover": {
-                              bgcolor: "rgba(224, 224, 224, 1) !important",
+                              bgcolor: `${theme.palette.action.hover} !important`,
                             },
                           }}
                         >
-                          <TableCell
-                            sx={{
-                              borderBottom: "1px solid black",
-                              borderRight: "1px solid black",
-                            }}
-                          >
-                            {id}
-                          </TableCell>
-                          <TableCell
-                            sx={{
-                              borderBottom: "1px solid black",
-                              borderRight: "1px solid black",
-                            }}
-                          >
+                          <TableCell sx={tableCellStyle}>{id}</TableCell>
+                          <TableCell sx={tableCellStyle}>
                             {kyc.first_name}
                           </TableCell>
-                          <TableCell
-                            sx={{
-                              borderBottom: "1px solid black",
-                              borderRight: "1px solid black",
-                            }}
-                          >
-                            {kyc.city}
-                          </TableCell>
-                          <TableCell
-                            sx={{
-                              borderBottom: "1px solid black",
-                              borderRight: "1px solid black",
-                            }}
-                          >
+                          <TableCell sx={tableCellStyle}>{kyc.city}</TableCell>
+                          <TableCell sx={tableCellStyle}>
                             {kyc.status}
                           </TableCell>
                         </TableRow>
@@ -376,129 +371,141 @@ function UserKycsNew() {
           </TableContainer>
         </Grid>
 
-        {/* Detailed View (Right Panel) */}
-        <Grid item xs={7}>
-          {selectedKyc ? (
-            <Card
-              variant="outlined"
-              style={{
-                backgroundColor: "black",
-                color: "#fff",
-                borderRadius: 8,
+        <Modal open={openModal} onClose={handleCloseModal}>
+          <Box
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "80%",
+              maxWidth: "800px",
+              bgcolor: theme.palette.background.paper,
+              boxShadow: 24,
+              p: 4,
+              borderRadius: 2,
+            }}
+          >
+            <IconButton
+              onClick={handleCloseModal}
+              sx={{
+                position: "absolute",
+                right: 16,
+                top: 16,
+                color: theme.palette.text.primary,
+                backgroundColor: theme.palette.action.hover,
+                "&:hover": {
+                  backgroundColor: theme.palette.action.selected,
+                },
               }}
             >
-              <CardContent>
-                <Grid container spacing={2}>
-                  {Array.from(names_map.keys())
-                    .filter(
-                      (key) =>
-                        key !== "status" &&
-                        key !== "hash" &&
-                        key !== "country" &&
-                        key !== "comments" &&
-                        selectedKyc[key] !== undefined
-                    )
-                    .map((key) => (
-                      <Grid item xs={6} key={key}>
-                        <Typography style={{ color: "#fff" }}>
-                          <strong>{names_map.get(key)}:</strong>{" "}
-                          {selectedKyc[key]}
-                        </Typography>
-                      </Grid>
-                    ))}
-                </Grid>
-                <div style={{ marginTop: "20px" }}>
-                  <Form.Control
-                    type="text"
-                    placeholder="Add Comment"
-                    value={selectedKyc.comments || ""}
-                    onChange={(e) => handleChange("comments", e.target.value)}
-                    as="textarea"
-                    style={{
-                      padding: 8,
-                      width: "100%",
-                      height: "auto",
-                      backgroundColor: "#444", // Dark background for text area
-                      color: "#fff", // Light text
-                      borderColor: "#666", // Border color
-                    }}
-                    rows={4}
-                  />
+              <CloseIcon />
+            </IconButton>
 
-                  <Box
-                    sx={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <Form.Select
-                      value={selectedKyc.status}
-                      onChange={(e) => handleChange("status", e.target.value)}
-                      style={{
-                        padding: 12,
-                        backgroundColor: "#444", // Dark background for select
-                        color: "#fff", // Light text
-                        borderColor: "#666", // Border color
-                      }}
-                    >
-                      {statusFlags.map((flag) => (
-                        <option key={flag} value={flag}>
-                          {flag}
-                        </option>
+            {selectedKyc && (
+              <Card variant="outlined" style={cardStyle}>
+                <CardContent>
+                  <Grid container spacing={2}>
+                    {Array.from(names_map.keys())
+                      .filter(
+                        (key) =>
+                          key !== "status" &&
+                          key !== "hash" &&
+                          key !== "country" &&
+                          key !== "comments" &&
+                          selectedKyc[key] !== undefined
+                      )
+                      .map((key) => (
+                        <Grid item xs={6} key={key}>
+                          <Typography>
+                            <strong>{names_map.get(key)}:</strong>{" "}
+                            {selectedKyc[key]}
+                          </Typography>
+                        </Grid>
                       ))}
-                    </Form.Select>
+                  </Grid>
+                  <div style={{ marginTop: "20px" }}>
+                    <Form.Control
+                      type="text"
+                      placeholder="Add Comment"
+                      value={selectedKyc.comments || ""}
+                      onChange={(e) => handleChange("comments", e.target.value)}
+                      as="textarea"
+                      style={textAreaStyle}
+                      rows={4}
+                    />
 
+                    <Box
+                      sx={{ display: "flex", justifyContent: "space-between" }}
+                    >
+                      <Form.Select
+                        value={selectedKyc.status}
+                        onChange={(e) => handleChange("status", e.target.value)}
+                        style={selectStyle}
+                      >
+                        {statusFlags.map((flag) => (
+                          <option key={flag} value={flag}>
+                            {flag}
+                          </option>
+                        ))}
+                      </Form.Select>
+
+                      <Button
+                        variant="contained"
+                        disabled={statusLoading}
+                        onClick={handleSubmit}
+                        sx={{
+                          marginTop: "10px",
+                          backgroundColor: theme.palette.primary.main,
+                          color: theme.palette.primary.contrastText,
+                        }}
+                      >
+                        {statusLoading ? "Submitting..." : "Submit Changes"}
+                      </Button>
+                    </Box>
+                  </div>
+                  <div style={{ marginTop: "10px" }}>
                     <Button
                       variant="contained"
-                      disabled={statusLoading}
-                      onClick={handleSubmit}
-                      style={{
-                        marginTop: "10px",
-                        backgroundColor: "#6200ea", // Dark button with purple accent
-                        color: "#fff",
+                      disabled={
+                        !docUrls[selectedKyc.id] ||
+                        !docUrls[selectedKyc.id].aadhar
+                      }
+                      onClick={() => downloadDoc("aadhar", selectedKyc.id)}
+                      sx={{
+                        marginRight: "10px",
+                        backgroundColor: theme.palette.success.main,
+                        color: theme.palette.success.contrastText,
                       }}
                     >
-                      {statusLoading ? "Submitting..." : "Submit Changes"}
-                    </Button>
-                  </Box>
-                </div>
-                <div style={{ marginTop: "10px" }}>
-                  <Button
-                    variant="contained"
-                    disabled={
-                      !docUrls[selectedKyc.id] ||
+                      {!docUrls[selectedKyc.id] ||
                       !docUrls[selectedKyc.id].aadhar
-                    } // Disable if Aadhar URL is not available
-                    onClick={() => downloadDoc("aadhar", selectedKyc.id)}
-                    style={{
-                      marginRight: "10px",
-                      backgroundColor: "#4caf50", // Green for Aadhar
-                      color: "#fff",
-                    }}
-                  >
-                    Download Aadhar
-                  </Button>
-                  <Button
-                    variant="contained"
-                    disabled={
-                      !docUrls[selectedKyc.id] || !docUrls[selectedKyc.id].gst
-                    } // Disable if Gst URL is not available
-                    onClick={() => downloadDoc("gst", selectedKyc.id)}
-                    style={{
-                      marginLeft: "10px",
-                      backgroundColor: "#f44336", // Red for Gst
-                      color: "#fff",
-                    }}
-                  >
-                    Download Gst
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Typography style={{ color: "#fff" }}>
-              Select a KYC record to view details.
-            </Typography>
-          )}
-          {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
-        </Grid>
+                        ? "Loading Aadhar File..."
+                        : "Download Aadhar"}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      disabled={
+                        !docUrls[selectedKyc.id] || !docUrls[selectedKyc.id].gst
+                      }
+                      onClick={() => downloadDoc("gst", selectedKyc.id)}
+                      sx={{
+                        marginLeft: "10px",
+                        backgroundColor: theme.palette.error.main,
+                        color: theme.palette.error.contrastText,
+                      }}
+                    >
+                      {!docUrls[selectedKyc.id] || !docUrls[selectedKyc.id].gst
+                        ? "Loading Gst File..."
+                        : "Download Gst"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
+          </Box>
+        </Modal>
       </Grid>
     </Grid>
   );
