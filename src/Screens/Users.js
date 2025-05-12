@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { getUserByEmail, saveDocument } from '../utils/firebaseUtils'; // Import getUserByEmail and saveDocument functions
-import { Card, CardContent, CardActions, Button, Typography, TextField, TableFooter, Switch } from '@mui/material';
+import { getUserByEmail, saveDocument } from '../utils/firebaseUtils';
+import { Card, CardContent, Button, TextField, Switch } from '@mui/material';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
 function Users() {

@@ -34,6 +34,7 @@ function LandingPage() {
     const cardData = [
         { title: "Transactions", subtitle: "View and manage transactions here.", link: "/transactions", icon: <CurrencyExchangeTwoTone /> },
         { title: "Studios", subtitle: "View and manage studios here.", link: "/studios", icon: <SchoolTwoTone /> },
+        { title: "Studios Add/Update", subtitle: "View and edit studios here.", link: "/studiosCrud", icon: <SchoolTwoTone /> },
         { title: "User KYCs", subtitle: "View and manage user KYCs here.", link: "/user-kycs", icon: <BookTwoTone /> },
         { title: "Workshops", subtitle: "View and manage workshops here.", link: "/workshops", icon: <EventAvailableTwoTone /> },
         { title: "Users", subtitle: "View and manage users here.", link: "/users", icon: <PeopleAltOutlined/> },

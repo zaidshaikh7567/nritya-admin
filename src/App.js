@@ -18,6 +18,7 @@ import Workshops from "./Screens/Workshops";
 import { Container } from "@mui/material";
 import Bookings from "./Screens/Bookings";
 import Instructors from "./Screens/Instructors";
+import StudioCrud from "./Screens/StudioCrud";
 import AdminMgmt from "./Screens/AdminMgmt";
 import { ProtectedRoutes, ProtectedRoles } from "./utils/ProtectedRoutes";
 import CarouselImgMgmt from "./Screens/CarouselImgMgmt";
@@ -53,6 +54,7 @@ function App() {
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/user-kycs" element={<UserKycsNew />} />
+                <Route path="/studiosCrud" element={<StudioCrud />} />
                 <Route path="/studios" element={<Studios />} />
                 <Route path="/workshops" element={<Workshops />} />
                 <Route path="/bookings" element={<Bookings />} />
