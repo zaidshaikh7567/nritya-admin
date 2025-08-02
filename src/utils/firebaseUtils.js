@@ -335,6 +335,76 @@ export const getFTBByEmail = async (value,collectionName,key) => {
   return collectionData;
 }
 
+// Enhanced transaction search functions
+export const getTransactionsByUserEmail = async (userEmail) => {
+  try {
+    // First get user ID from email
+    const userData = await getUserByEmail(userEmail);
+    if (!userData) {
+      return [];
+    }
+    
+    // Then get transactions by user ID
+    return await getFTBByEmail(userData.id, 'Transactions', 'userId');
+  } catch (error) {
+    console.error('Error fetching transactions by email:', error);
+    throw error;
+  }
+};
+
+export const getTransactionsByUserId = async (userId) => {
+  try {
+    return await getFTBByEmail(userId, 'Transactions', 'userId');
+  } catch (error) {
+    console.error('Error fetching transactions by user ID:', error);
+    throw error;
+  }
+};
+
+export const getTransactionsByWorkshopId = async (workshopId) => {
+  try {
+    return await getFTBByEmail(workshopId, 'Transactions', 'workshopId');
+  } catch (error) {
+    console.error('Error fetching transactions by workshop ID:', error);
+    throw error;
+  }
+};
+
+// Get all transactions with optional filters
+export const getAllTransactions = async (filters = {}) => {
+  try {
+    let q = collection(db, 'Transactions');
+    
+    // Apply filters if provided
+    if (filters.status) {
+      q = query(q, where('status', '==', filters.status));
+    }
+    if (filters.userId) {
+      q = query(q, where('userId', '==', filters.userId));
+    }
+    if (filters.workshopId) {
+      q = query(q, where('workshopId', '==', filters.workshopId));
+    }
+    if (filters.minAmount) {
+      q = query(q, where('amount', '>=', filters.minAmount));
+    }
+    if (filters.maxAmount) {
+      q = query(q, where('amount', '<=', filters.maxAmount));
+    }
+    
+    const querySnapshot = await getDocs(q);
+    const transactions = [];
+    querySnapshot.forEach((doc) => {
+      transactions.push({ id: doc.id, ...doc.data() });
+    });
+    
+    return transactions;
+  } catch (error) {
+    console.error('Error fetching all transactions:', error);
+    throw error;
+  }
+};
+
 export const updateDocMergeKyc = async (collectionName, kycId, data, userId) => {
   const docRef = doc(db, collectionName, kycId);
   console.log(data);
