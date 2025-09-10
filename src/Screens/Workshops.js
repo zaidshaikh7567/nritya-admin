@@ -1,9 +1,10 @@
 import React from 'react'
+import WorkshopCrud from './WorkshopCrud'
 
 function Workshops() {
   return (
     <div>
-      <p>Workshops</p>
+      <WorkshopCrud />
     </div>
   )
 }
