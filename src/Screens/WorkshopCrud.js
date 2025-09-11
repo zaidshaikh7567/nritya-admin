@@ -55,12 +55,9 @@ const initialData = {
   building: "",
   street: "",
   city: "",
-  state: "",
-  pincode: "",
-  geolocation: {
-    lat: null,
-    lng: null,
-  },
+  //state: "",
+  //pincode: "",
+  geolocation: "",
   mapAddress: "",
   variants: [
     {
@@ -135,14 +132,22 @@ function WorkshopCrud() {
           `${baseUrlServer}crud/getUserDataByEmail/${searchQuery?.trim?.()}`
         );
 
+        // Add logging for user details search
+        console.log("=== USER DETAILS SEARCH DEBUG ===");
+        console.log("User search URL:", `${baseUrlServer}crud/getUserDataByEmail/${searchQuery?.trim?.()}`);
+        console.log("User search response:", response.data);
+        console.log("User data:", response.data?.data);
+
         if (Object.keys(response.data?.data || {}).length) {
           setUserDetails(response.data?.data ?? null);
+          console.log("User details set successfully:", response.data?.data);
         } else {
           setUserDetails(null);
+          console.log("No user data found for email:", searchQuery);
           return alert("Failed to find user with the provided email");
         }
       } catch (error) {
-        console.error(error);
+        console.error("User search error:", error);
         setUserDetails(null);
         return alert("Failed to find user with the provided email");
       }
@@ -156,7 +161,44 @@ function WorkshopCrud() {
       setSubmitting(true);
       setResults([]);
       const response = await axios.get(searchUrl);
-      setResults(response.data.workshops || []);
+      
+      // Add comprehensive logging for debugging
+      console.log("=== SEARCH API RESPONSE DEBUG ===");
+      console.log("Search URL:", searchUrl);
+      console.log("Full API Response:", response.data);
+      console.log("Workshops array:", response.data.workshops);
+      
+      if (response.data.workshops && response.data.workshops.length > 0) {
+        console.log("First workshop sample:", response.data.workshops[0]);
+        console.log("Creator email fields in first workshop:", {
+          creator_email: response.data.workshops[0].creator_email,
+          creatorEmail: response.data.workshops[0].creatorEmail,
+          allKeys: Object.keys(response.data.workshops[0])
+        });
+        
+        console.log("Address fields in first workshop:", {
+          building: response.data.workshops[0].building,
+          street: response.data.workshops[0].street,
+          city: response.data.workshops[0].city,
+          //state: response.data.workshops[0].state,
+          //pincode: response.data.workshops[0].pincode
+        });
+      }
+      
+      // Sort workshops by start date in descending order (newest first)
+      const sortedWorkshops = (response.data.workshops || []).sort((a, b) => {
+        const dateA = new Date(a.start_date);
+        const dateB = new Date(b.start_date);
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
+      console.log("Workshops sorted by start date (newest first):", sortedWorkshops.map(w => ({
+        name: w.name,
+        start_date: w.start_date,
+        formatted_date: formatDateToReadable(w.start_date)
+      })));
+      
+      setResults(sortedWorkshops);
       setIsSubmited(true);
     } catch (error) {
       console.error("Error fetching workshops:", error);
@@ -179,9 +221,9 @@ function WorkshopCrud() {
       building: formData.building || "",
       street: formData.street || "",
       city: formData.city || "",
-      state: formData.state || "",
-      pincode: formData.pincode || "",
-      geolocation: formData.geolocation || null,
+      //state: formData.state || "",
+     // pincode: formData.pincode || "",
+      geolocation: formData.geolocation || "",
       mapAddress: formData.mapAddress || "",
     };
 
@@ -237,12 +279,12 @@ function WorkshopCrud() {
       building: formData.building || "",
       street: formData.street || "",
       city: formData.city || "",
-      state: formData.state || "",
-      pincode: formData.pincode || "",
-      geolocation: formData.geolocation || null,
+      //state: formData.state || "",
+      //pincode: formData.pincode || "",
+      geolocation: formData.geolocation || "",
       mapAddress: formData.mapAddress || "",
     };
-
+    console.log("AR_ transformedWorkshop {transformedWorkshop}", transformedWorkshop);
     const transformedVariants = formData.variants.map((variant, index) => ({
       variant_id: selectedWorkshop?.variants?.[index]?.variant_id || `NEW_${index + 1}`,
       date: variant.date ? new Date(variant.date).toISOString().split('T')[0] : "",
@@ -293,6 +335,35 @@ function WorkshopCrud() {
     setFormData(() => {
       const formatedData = { ...workshop };
 
+      // Add logging for form data mapping
+      console.log("=== FORM DATA MAPPING DEBUG ===");
+      console.log("Original workshop data:", workshop);
+      console.log("Creator email fields before mapping:", {
+        creator_email: formatedData.creator_email,
+        creatorEmail: formatedData.creatorEmail
+      });
+
+      // Handle creator_email field mapping from API response (creatorEmail) to form field (creator_email)
+      if (formatedData.creatorEmail && !formatedData.creator_email) {
+        console.log("Mapping creatorEmail to creator_email:", formatedData.creatorEmail);
+        formatedData.creator_email = formatedData.creatorEmail;
+      }
+
+      console.log("Creator email fields after mapping:", {
+        creator_email: formatedData.creator_email,
+        creatorEmail: formatedData.creatorEmail
+      });
+
+      // Add logging for address fields
+      console.log("Address fields in workshop data:", {
+        building: formatedData.building,
+        street: formatedData.street,
+        city: formatedData.city,
+        //state: formatedData.state,
+        //pincode: formatedData.pincode,
+        venueDetails: formatedData.venueDetails
+      });
+
       formatedData.dance_styles = formatedData.dance_styles
         ? formatedData.dance_styles.split(", ").filter(Boolean)
         : [];
@@ -327,14 +398,22 @@ function WorkshopCrud() {
   };
 
   const handleSubmit = async (createWorkshopCallback) => {
+    console.log("=== WORKSHOP CRUD HANDLE SUBMIT DEBUG ===");
+    console.log("handleSubmit called, isUpdating:", isUpdating);
+    console.log("createWorkshopCallback:", createWorkshopCallback);
+    
     try {
       if (isUpdating) {
+        console.log("Updating workshop...");
         setIsUpdating(false);
         await pushData(selectedWorkshop.workshop_id, "Workshop");
         setSelectedWorkshop(null);
       } else {
-        const data = await addData();
-        await createWorkshopCallback(data?.workshop_id);
+        console.log("Creating new workshop - calling callback if provided");
+        // Workshop is already created by WorkshopForm.js, just call the callback if provided
+        if (createWorkshopCallback) {
+          await createWorkshopCallback();
+        }
       }
     } finally {
       setFormData(initialData);
@@ -497,19 +576,37 @@ function WorkshopCrud() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {results.map((workshop, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <a
-                            href={`${baseUrlRender}#/workshop/${workshop.workshop_id}`}
-                            style={{ textDecoration: "none", color: "inherit" }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {workshop.workshop_id}
-                          </a>
-                        </TableCell>
-                        <TableCell>{workshop.name}</TableCell>
-                        <TableCell>{workshop.creator_email}</TableCell>
+                    {results.map((workshop, index) => {
+                      // Add logging for each workshop row
+                      console.log(`=== WORKSHOP ${index} TABLE DISPLAY DEBUG ===`);
+                      console.log("Workshop data:", workshop);
+                      console.log("Creator email values:", {
+                        creator_email: workshop.creator_email,
+                        creatorEmail: workshop.creatorEmail,
+                        finalDisplayValue: workshop.creator_email || workshop.creatorEmail
+                      });
+                      
+                      console.log("Address field values:", {
+                        building: workshop.building,
+                        street: workshop.street,
+                        city: workshop.city,
+                        //state: workshop.state,
+                        //pincode: workshop.pincode
+                      });
+                      
+                      return (
+                        <TableRow key={index}>
+                          <TableCell>
+                            <a
+                              href={`${baseUrlRender}#/workshop/${workshop.workshop_id}`}
+                              style={{ textDecoration: "none", color: "inherit" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {workshop.workshop_id}
+                            </a>
+                          </TableCell>
+                          <TableCell>{workshop.name}</TableCell>
+                          <TableCell>{workshop.creator_email || workshop.creatorEmail}</TableCell>
                         <TableCell>{workshop.city}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
@@ -579,7 +676,8 @@ function WorkshopCrud() {
                           </Stack>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

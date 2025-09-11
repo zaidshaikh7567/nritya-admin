@@ -93,10 +93,7 @@ const initialValue = {
   state: "",
   pincode: "",
   mapAddress: "",
-  geolocation: {
-    lat: null,
-    lng: null,
-  },
+  geolocation: "",
   variants: [
     {
       date: null,
@@ -130,6 +127,47 @@ const WorkshopForm = ({
   onSubmit 
 }) => {
   const [step, setStep] = useState(1);
+
+  // Add logging to see what formData is received
+  useEffect(() => {
+    console.log("=== WORKSHOP FORM RECEIVED DATA DEBUG ===");
+    console.log("isUpdating:", isUpdating);
+    console.log("Full formData received:", formData);
+    console.log("Address fields in formData:", {
+      building: formData?.building,
+      street: formData?.street,
+      city: formData?.city,
+      state: formData?.state,
+      pincode: formData?.pincode,
+      venueDetails: formData?.venueDetails
+    });
+  }, [formData, isUpdating]);
+
+  // Fetch workshop icon when editing
+  useEffect(() => {
+    const fetchWorkshopIcon = async () => {
+      if (isUpdating && entityId) {
+        try {
+          console.log("Fetching workshop icon for entityId:", entityId);
+          const response = await fetch(`${baseUrlServer}imagesCrud/workshopIcon/${entityId}/`);
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Workshop icon response:", result);
+            if (result.image_urls && result.image_urls.length > 0) {
+              setWorkshopIconUrl(result.image_urls[0]);
+              console.log("Workshop icon URL set:", result.image_urls[0]);
+            }
+          } else {
+            console.log("No workshop icon found or error fetching icon");
+          }
+        } catch (error) {
+          console.error('Error fetching workshop icon:', error);
+        }
+      }
+    };
+
+    fetchWorkshopIcon();
+  }, [isUpdating, entityId, baseUrlServer]);
   const [isVideoLink, setIsVideoLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workshopIconUrl, setWorkshopIconUrl] = useState("");
@@ -281,10 +319,8 @@ const WorkshopForm = ({
           }, ${selectedStudio.city}, ${selectedStudio.state}, ${
             selectedStudio.country
           } - ${selectedStudio.pincode}`,
-          selectedLocation: selectedStudio.geolocation ? {
-            lat: selectedStudio.geolocation.lat,
-            lng: selectedStudio.geolocation.lng
-          } : null,
+          selectedLocation: selectedStudio.geolocation ? 
+            `${selectedStudio.geolocation.lat},${selectedStudio.geolocation.lng}` : null,
         },
         // Map studio data to main form fields
         building: selectedStudio.buildingName || "",
@@ -298,10 +334,8 @@ const WorkshopForm = ({
           selectedStudio.country
         } - ${selectedStudio.pincode}`,
         // Map geolocation data
-        geolocation: selectedStudio.geolocation ? {
-          lat: selectedStudio.geolocation.lat,
-          lng: selectedStudio.geolocation.lng
-        } : null,
+        geolocation: selectedStudio.geolocation ? 
+          `${selectedStudio.geolocation.lat},${selectedStudio.geolocation.lng}` : null,
       }));
     } else {
       setFormData((prev) => ({
@@ -350,23 +384,21 @@ const WorkshopForm = ({
         !formData.description ||
         !formData.dance_styles?.length ||
         !formData.level ||
-        !formData.venueType ||
+        //!formData.venueType ||
         !formData.start_date ||
         !formData.end_date
       ) {
         return false;
       }
 
-      // Check venue-specific fields
+      // Check venue-specific fields - unified address fields for both venue types
       if (formData.venueType === "Studio") {
         if (!formData.venueDetails?.studio || !formData.building || !formData.street || !formData.city) {
           return false;
         }
       } else if (formData.venueType === "Independent") {
-        if (
-          !formData.venueDetails?.streetAddress ||
-          !formData.venueDetails?.city
-        ) {
+        // Use unified address fields for Independent venues too
+        if (!formData.building || !formData.street || !formData.city) {
           return false;
         }
       }
@@ -426,6 +458,10 @@ const WorkshopForm = ({
 
   const handleAddWorkshop = async (event) => {
     event.preventDefault();
+    
+    console.log("=== WORKSHOP CREATION DEBUG ===");
+    console.log("handleAddWorkshop called, isUpdating:", isUpdating);
+    console.log("Event:", event);
 
     if (!isValidInputs()) {
       alert("Please fill all the fields.");
@@ -434,7 +470,7 @@ const WorkshopForm = ({
 
     try {
       setIsSubmitting(true);
-
+      console.log(formData);
       const transformedWorkshop = {
         name: formData.name,
         description: formData.description,
@@ -447,7 +483,7 @@ const WorkshopForm = ({
         end_date: formData.end_date
           ? dayjs(formData.end_date).format("YYYY-MM-DD")
           : "",
-        creator_email: formData.creator_email,
+        creator_email: formData.creator_email || formData.creatorEmail,
         // Unified venue transformation for both Studio and Independent
         ...(formData.venueDetails
           ? {
@@ -456,7 +492,7 @@ const WorkshopForm = ({
               city: formData.venueDetails.city || formData.city || "",
               state: formData.venueDetails.state || formData.state || "",
               pincode: formData.venueDetails.pincode || formData.pincode || "",
-              geolocation: formData.venueDetails.selectedLocation || formData.geolocation || null,
+              geolocation: formData.venueDetails.selectedLocation || formData.geolocation || "",
               mapAddress: formData.venueDetails.mapAddress || formData.mapAddress || "",
             }
           : {
@@ -465,7 +501,7 @@ const WorkshopForm = ({
               city: formData.city || "",
               state: formData.state || "",
               pincode: formData.pincode || "",
-              geolocation: formData.geolocation || null,
+              geolocation: formData.geolocation || "",
               mapAddress: formData.mapAddress || "",
             }),
       };
@@ -559,6 +595,7 @@ const WorkshopForm = ({
           );
         }
 
+        console.log("Workshop created successfully, calling onSubmit callback");
         clearForm();
         onSubmit();
       } else {
@@ -648,10 +685,10 @@ const WorkshopForm = ({
                       variant="outlined"
                       InputLabelProps={{ shrink: false }}
                       placeholder="Enter creator email"
-                      value={formData.creator_email}
+                      value={formData.creator_email|| formData.creatorEmail}
                       onChange={handleChange}
                     />
-                    {formData.creator_email && (
+                    {(formData.creator_email || formData.creatorEmail) && (
                       <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                         {loadingStudios ? (
                           <>
@@ -1101,8 +1138,8 @@ const WorkshopForm = ({
                     </Grid>
                   )}
 
-                  {/* Show studio details when studio is selected */}
-                  {formData.venueType === "Studio" && formData.venueDetails?.studio && (
+1                  {/* Show address fields when editing or when studio is selected */}
+                  {(isUpdating || (formData.venueType === "Studio" && formData.venueDetails?.studio)) && (
                     <>
                       <Grid item xs={12} sm={6}>
                         <Typography
@@ -1121,9 +1158,10 @@ const WorkshopForm = ({
                           sx={{ height: FORM_FIELD_HEIGHT }}
                           variant="outlined"
                           InputLabelProps={{ shrink: false }}
-                          placeholder="Building name from selected studio"
+                          placeholder={isUpdating ? "Building name" : "Building name from selected studio"}
                           value={formData.building}
-                          disabled={true}
+                          disabled={!isUpdating}
+                          onChange={isUpdating ? handleChange : undefined}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -1143,9 +1181,10 @@ const WorkshopForm = ({
                           sx={{ height: FORM_FIELD_HEIGHT }}
                           variant="outlined"
                           InputLabelProps={{ shrink: false }}
-                          placeholder="Street address from selected studio"
+                          placeholder={isUpdating ? "Street address" : "Street address from selected studio"}
                           value={formData.street}
-                          disabled={true}
+                          disabled={!isUpdating}
+                          onChange={isUpdating ? handleChange : undefined}
                         />
                       </Grid>
                       <Grid item xs={12} sm={4}>
@@ -1165,56 +1204,14 @@ const WorkshopForm = ({
                           sx={{ height: FORM_FIELD_HEIGHT }}
                           variant="outlined"
                           InputLabelProps={{ shrink: false }}
-                          placeholder="City from selected studio"
+                          placeholder={isUpdating ? "City" : "City from selected studio"}
                           value={formData.city}
-                          disabled={true}
+                          disabled={!isUpdating}
+                          onChange={isUpdating ? handleChange : undefined}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontSize: "16px",
-                            color: "black",
-                          }}
-                          gutterBottom
-                        >
-                          State
-                        </Typography>
-                        <TextField
-                          fullWidth
-                          name="state"
-                          sx={{ height: FORM_FIELD_HEIGHT }}
-                          variant="outlined"
-                          InputLabelProps={{ shrink: false }}
-                          placeholder="State from selected studio"
-                          value={formData.state}
-                          disabled={true}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontSize: "16px",
-                            color: "black",
-                          }}
-                          gutterBottom
-                        >
-                          Pincode
-                        </Typography>
-                        <TextField
-                          fullWidth
-                          name="pincode"
-                          sx={{ height: FORM_FIELD_HEIGHT }}
-                          variant="outlined"
-                          InputLabelProps={{ shrink: false }}
-                          placeholder="Pincode from selected studio"
-                          value={formData.pincode}
-                          disabled={true}
-                        />
-                      </Grid>
-                      {formData.geolocation && formData.geolocation.lat && formData.geolocation.lng && (
+
+                      {formData.geolocation && (
                         <Grid item xs={12}>
                           <Typography
                             variant="body1"
@@ -1232,170 +1229,13 @@ const WorkshopForm = ({
                             variant="outlined"
                             InputLabelProps={{ shrink: false }}
                             placeholder="Geolocation from selected studio"
-                            value={`${formData.geolocation.lat}, ${formData.geolocation.lng}`}
+                            value={formData.geolocation}
                             disabled={true}
                           />
                         </Grid>
                       )}
                     </>
                   )}
-
-                  {formData.venueType === "Independent" && (
-                    <>
-                      <Grid item xs={12}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontSize: "16px",
-                            color: "black",
-                          }}
-                          gutterBottom
-                        >
-                          Street Address
-                        </Typography>
-                        <TextField
-                          fullWidth
-                          name="streetAddress"
-                          value={formData.venueDetails?.streetAddress || ""}
-                          onChange={handleIndependentVenueChange}
-                          sx={{ height: FORM_FIELD_HEIGHT }}
-                          variant="outlined"
-                          InputLabelProps={{ shrink: false }}
-                          placeholder="Enter street address"
-                          disabled={!isCreatorEmailValid}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <Typography
-                          variant="body1"
-                          sx={{ fontSize: "16px" }}
-                          gutterBottom
-                        >
-                          Building/Landmark
-                        </Typography>
-                        <TextField
-                          fullWidth
-                          name="buildingName"
-                          value={formData.venueDetails?.buildingName || ""}
-                          onChange={handleIndependentVenueChange}
-                          sx={{ height: FORM_FIELD_HEIGHT }}
-                          variant="outlined"
-                          InputLabelProps={{ shrink: false }}
-                          placeholder="Enter building name"
-                          disabled={!isCreatorEmailValid}
-                        />
-                      </Grid>
-                    </>
-                  )}
-
-                  {formData.venueType === "Independent" && (
-                    <>
-                      <Grid item xs={12} sm={6}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontSize: "16px",
-                            color: "black",
-                          }}
-                          gutterBottom
-                        >
-                          City
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Select
-                            name="city"
-                            value={formData.venueDetails?.city || ""}
-                            onChange={handleIndependentVenueChange}
-                            displayEmpty
-                            disabled={!isCreatorEmailValid}
-                            sx={{ height: FORM_FIELD_HEIGHT }}
-                          >
-                            <MenuItem value="">Select city</MenuItem>
-                            {cityOptions.map((city, index) => (
-                              <MenuItem key={index} value={city}>
-                                {city}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontSize: "16px",
-                            color: "black",
-                          }}
-                          gutterBottom
-                        >
-                          State
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Select
-                            name="state"
-                            value={formData.venueDetails?.state || ""}
-                            onChange={handleIndependentVenueChange}
-                            displayEmpty
-                            disabled={!isCreatorEmailValid}
-                            sx={{ height: FORM_FIELD_HEIGHT }}
-                          >
-                            <MenuItem value="">Select state</MenuItem>
-                            {stateOptions.map((state, index) => (
-                              <MenuItem key={index} value={state}>
-                                {state}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    </>
-                  )}
-
-                  <Grid item xs={12} sm={4}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontSize: "16px",
-                        color: "black",
-                      }}
-                      gutterBottom
-                    >
-                      Pincode
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      name="pincode"
-                      sx={{ height: FORM_FIELD_HEIGHT }}
-                      variant="outlined"
-                      InputLabelProps={{ shrink: false }}
-                      placeholder="Enter pincode"
-                      value={formData.pincode}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontSize: "16px",
-                        color: "black",
-                      }}
-                      gutterBottom
-                    >
-                      Google Maps Address
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      name="mapAddress"
-                      sx={{ height: FORM_FIELD_HEIGHT }}
-                      variant="outlined"
-                      InputLabelProps={{ shrink: false }}
-                      placeholder="Enter Google Maps address"
-                      value={formData.mapAddress}
-                      onChange={handleChange}
-                    />
-                  </Grid>
 
                   <Grid item xs={12} sx={{ textAlign: "right" }}>
                     <MuiButton

@@ -374,7 +374,7 @@ const WorkshopStep2EventInfo = ({
         <Box sx={{ display: "flex", justifyContent: "space-between" }}>
           <Button
             variant="contained"
-            type="submit"
+            type="button"
             sx={{
               bgcolor: "#67569E",
               color: "white",
@@ -387,7 +387,7 @@ const WorkshopStep2EventInfo = ({
           </Button>
           <Button
             variant="contained"
-            type="submit"
+            type="button"
             sx={{
               bgcolor: "#67569E",
               color: "white",
@@ -405,3 +405,4 @@ const WorkshopStep2EventInfo = ({
 };
 
 export default WorkshopStep2EventInfo;
+
