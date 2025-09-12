@@ -19,17 +19,31 @@ import {
   Chip,
   Stack,
   Tooltip,
+  Card,
+  CardContent,
+  ToggleButton,
+  ToggleButtonGroup,
+  Divider,
+  IconButton,
+  Autocomplete,
 } from "@mui/material";
+import {
+  Search as SearchIcon,
+  Email as EmailIcon,
+  LocationOn as LocationIcon,
+  FilterList as FilterIcon,
+} from "@mui/icons-material";
 import axios from "axios";
 import WorkshopForm from "../Components/workshop-crud/WorkshopForm";
 import { BASEURL_PROD } from "../constants";
+import citiesData from "../cities.json";
 
 const WINDOWS = {
   DEFAULT: "default",
   ADD_WORKSHOP: "addWorkshop",
   UPDATE_WORKSHOP: "updateWorkshop",
 };
-
+const local = "http://0.0.0.0:8000/"
 // Mode URLs
 const server = {
   PRODUCTION: "https://djserver-production-ffe37b1b53b5.herokuapp.com/",
@@ -38,7 +52,7 @@ const server = {
 
 const render = {
   PRODUCTION: "https://www.nritya.co.in/",
-  STAGING: "https://nritya-official.github.io/nritya-webApp/",
+  STAGING: "https://nritya-webapp-ssr-1-b3a1c0b4b8f2.herokuapp.com/",
 };
 
 const initialData = {
@@ -107,6 +121,8 @@ function WorkshopCrud() {
   const [mode, setMode] = useState("STAGING");
   const [searchType, setSearchType] = useState("EMAIL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [citySearchStatus, setCitySearchStatus] = useState("UPCOMING");
+  const [creatorSearchStatus, setCreatorSearchStatus] = useState("UPCOMING");
   const [results, setResults] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
@@ -125,7 +141,25 @@ function WorkshopCrud() {
     let searchUrl = `${baseUrlServer}crud/get_workshops_by_creator/`;
 
     if (searchType === "EMAIL") {
-      searchUrl += searchQuery;
+      // Map creator search status to appropriate endpoint
+      const creatorEndpoints = {
+        "ALL": "get_workshops_by_creator",
+        "CONCLUDED": "get_concluded_workshops_by_creator",
+        "ONGOING": "get_ongoing_workshops_by_creator",
+        "UPCOMING": "get_upcoming_workshops_by_creator"
+      };
+      
+      const endpoint = creatorEndpoints[creatorSearchStatus];
+      if (!endpoint) {
+        return alert("Invalid creator search status");
+      }
+      
+      searchUrl = `${baseUrlServer}crud/${endpoint}/${searchQuery?.trim?.()}`;
+      
+      console.log("=== CREATOR SEARCH DEBUG ===");
+      console.log("Creator search URL:", searchUrl);
+      console.log("Creator email:", searchQuery);
+      console.log("Status:", creatorSearchStatus);
 
       try {
         const response = await axios.get(
@@ -152,9 +186,27 @@ function WorkshopCrud() {
         return alert("Failed to find user with the provided email");
       }
     } else if (searchType === "CITY") {
-      // For city search, we'll need to implement a different endpoint
       setUserDetails(null);
-      return alert("City search not implemented yet");
+      
+      // Map city search status to appropriate endpoint
+      const cityEndpoints = {
+        "ALL": "get_workshops_by_city",
+        "CONCLUDED": "get_concluded_workshops_by_city",
+        "ONGOING": "get_ongoing_workshops_by_city",
+        "UPCOMING": "get_upcoming_workshops_by_city"
+      };
+      
+      const endpoint = cityEndpoints[citySearchStatus];
+      if (!endpoint) {
+        return alert("Invalid city search status");
+      }
+      
+      searchUrl = `${baseUrlServer}crud/${endpoint}/${searchQuery?.trim?.()}`;
+      
+      console.log("=== CITY SEARCH DEBUG ===");
+      console.log("City search URL:", searchUrl);
+      console.log("City:", searchQuery);
+      console.log("Status:", citySearchStatus);
     }
 
     try {
@@ -430,6 +482,8 @@ function WorkshopCrud() {
     setUserDetails(null);
     setResults([]);
     setSearchQuery("");
+    setCitySearchStatus("UPCOMING"); // Reset city search status
+    setCreatorSearchStatus("UPCOMING"); // Reset creator search status
   };
 
   const handleDelete = async (workshop) => {
@@ -483,71 +537,251 @@ function WorkshopCrud() {
               fontFamily: "sans-serif",
             }}
           >
-            <Typography variant="h5" gutterBottom>
-              Workshop CRUD
-            </Typography>
 
             {/* Mode Select */}
-            <FormControl component="fieldset">
-              <RadioGroup
-                row
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'text.secondary' }}>
+                Environment
+              </Typography>
+              <ToggleButtonGroup
                 value={mode}
+                exclusive
                 onChange={(e) => setMode(e.target.value)}
+                aria-label="environment"
+                fullWidth
+                sx={{ 
+                  '& .MuiToggleButton-root': {
+                    flex: 1,
+                    py: 1.5,
+                    border: '2px solid',
+                    borderColor: 'divider',
+                    '&.Mui-selected': {
+                      backgroundColor: mode === 'STAGING' ? 'warning.main' : 'success.main',
+                      color: 'white',
+                      borderColor: mode === 'STAGING' ? 'warning.main' : 'success.main',
+                      '&:hover': {
+                        backgroundColor: mode === 'STAGING' ? 'warning.dark' : 'success.dark',
+                      }
+                    }
+                  }
+                }}
               >
-                <FormControlLabel
-                  value="STAGING"
-                  control={<Radio />}
-                  label="Staging"
-                />
-                <FormControlLabel
-                  value="PRODUCTION"
-                  control={<Radio />}
-                  label="Production"
-                />
-              </RadioGroup>
-            </FormControl>
+                <ToggleButton value="STAGING" aria-label="staging">
+                  Staging
+                </ToggleButton>
+                <ToggleButton value="PRODUCTION" aria-label="production">
+                  Production
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
             <br />
 
+            {/* Search Section */}
+            <Card sx={{ mb: 3, boxShadow: 2 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <SearchIcon sx={{ mr: 1, color: 'primary.main' }} />
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    Search Workshops
+                  </Typography>
+                </Box>
+
             {/* Search Type */}
-            <FormControl component="fieldset" sx={{ mb: 2 }}>
-              <RadioGroup
-                row
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'text.secondary' }}>
+                Search Type
+              </Typography>
+              <ToggleButtonGroup
                 value={searchType}
-                onChange={(e) => changeSearchMode(e)}
+                exclusive
+                onChange={changeSearchMode}
+                aria-label="search type"
+                fullWidth
+                sx={{ 
+                  '& .MuiToggleButton-root': {
+                    flex: 1,
+                    py: 1.5,
+                    border: '2px solid',
+                    borderColor: 'divider',
+                    '&.Mui-selected': {
+                      backgroundColor: 'primary.main',
+                      color: 'white',
+                      borderColor: 'primary.main',
+                      '&:hover': {
+                        backgroundColor: 'primary.dark',
+                      }
+                    }
+                  }
+                }}
               >
-                <FormControlLabel
-                  value="EMAIL"
-                  control={<Radio />}
-                  label="Search by Email"
-                />
-                <FormControlLabel
-                  value="CITY"
-                  control={<Radio />}
-                  label="Search by City"
-                />
-              </RadioGroup>
-            </FormControl>
+                <ToggleButton value="EMAIL" aria-label="search by email">
+                  <EmailIcon sx={{ mr: 1 }} />
+                  Search by Email
+                </ToggleButton>
+                <ToggleButton value="CITY" aria-label="search by city">
+                  <LocationIcon sx={{ mr: 1 }} />
+                  Search by City
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
-            <TextField
-              label={`Enter ${searchType}`}
-              variant="outlined"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-              sx={{ mb: 2, width: "100%" }}
-            />
+            <Box sx={{ mb: 3 }}>
+              {searchType === "EMAIL" ? (
+                <TextField
+                  label="Enter Creator Email"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                    }
+                  }}
+                  InputProps={{
+                    startAdornment: <EmailIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                  }}
+                />
+              ) : (
+                <Autocomplete
+                  options={citiesData.cities}
+                  value={searchQuery}
+                  onChange={(event, newValue) => {
+                    setSearchQuery(newValue || "");
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setSearchQuery(newInputValue);
+                  }}
+                  freeSolo
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select or Enter City Name"
+                      variant="outlined"
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2,
+                        }
+                      }}
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: <LocationIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                      }}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <LocationIcon sx={{ mr: 1, color: 'text.secondary', fontSize: '1rem' }} />
+                      {option}
+                    </Box>
+                  )}
+                  sx={{
+                    '& .MuiAutocomplete-inputRoot': {
+                      paddingRight: '14px !important',
+                    }
+                  }}
+                />
+              )}
+            </Box>
 
+            {/* Status Filter Section */}
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <FilterIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                  Workshop Status Filter
+                </Typography>
+              </Box>
+              
+              {/* City Search Status Filter */}
+              {searchType === "CITY" && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {[
+                    { value: "ALL", label: "All", color: "default" },
+                    { value: "CONCLUDED", label: "Concluded", color: "error" },
+                    { value: "ONGOING", label: "Ongoing", color: "warning" },
+                    { value: "UPCOMING", label: "Upcoming", color: "success" }
+                  ].map((status) => (
+                    <Chip
+                      key={status.value}
+                      label={status.label}
+                      clickable
+                      color={citySearchStatus === status.value ? status.color : "default"}
+                      variant={citySearchStatus === status.value ? "filled" : "outlined"}
+                      onClick={() => setCitySearchStatus(status.value)}
+                      sx={{
+                        fontWeight: citySearchStatus === status.value ? 'bold' : 'normal',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-1px)',
+                          boxShadow: 2
+                        }
+                      }}
+                    />
+                  ))}
+                </Stack>
+              )}
+
+              {/* Creator Search Status Filter */}
+              {searchType === "EMAIL" && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {[
+                    { value: "ALL", label: "All", color: "default" },
+                    { value: "CONCLUDED", label: "Concluded", color: "error" },
+                    { value: "ONGOING", label: "Ongoing", color: "warning" },
+                    { value: "UPCOMING", label: "Upcoming", color: "success" }
+                  ].map((status) => (
+                    <Chip
+                      key={status.value}
+                      label={status.label}
+                      clickable
+                      color={creatorSearchStatus === status.value ? status.color : "default"}
+                      variant={creatorSearchStatus === status.value ? "filled" : "outlined"}
+                      onClick={() => setCreatorSearchStatus(status.value)}
+                      sx={{
+                        fontWeight: creatorSearchStatus === status.value ? 'bold' : 'normal',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-1px)',
+                          boxShadow: 2
+                        }
+                      }}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Box>
+
+            <Divider sx={{ mb: 3 }} />
+
+            {/* Search Button */}
             <Button
               variant="contained"
               color="primary"
               disabled={submitting}
               onClick={handleSearch}
               fullWidth
+              size="large"
+              startIcon={<SearchIcon />}
+              sx={{
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                textTransform: 'none',
+                boxShadow: 2,
+                '&:hover': {
+                  boxShadow: 4,
+                  transform: 'translateY(-1px)'
+                },
+                transition: 'all 0.2s ease-in-out'
+              }}
             >
-              {submitting ? "Searching..." : "Search"}
+              {submitting ? "Searching..." : `Search ${searchType === "CITY" ? `(${citySearchStatus})` : searchType === "EMAIL" ? `(${creatorSearchStatus})` : ""}`}
             </Button>
-
+              </CardContent>
+            </Card>
 
               <Box sx={{ display: "flex", justifyContent: "end", mt: 2 }}>
                 <Button

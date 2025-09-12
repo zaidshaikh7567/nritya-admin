@@ -69,11 +69,12 @@ const stateOptions = [
   "Lakshadweep", "Puducherry"
 ];
 
+// Updated LEVELS to use numbers mapped to strings
 const LEVELS = {
-  BEGINNER: "Beginner",
-  INTERMEDIATE: "Intermediate", 
-  ADVANCED: "Advanced",
-  ALL_LEVELS: "All Levels"
+  1: "Beginner",
+  2: "Intermediate", 
+  3: "Advanced",
+  0: "All Levels"
 };
 
 const initialValue = {
@@ -86,18 +87,22 @@ const initialValue = {
   end_date: null,
   creator_email: "",
   venueType: "Studio", // Studio | Independent
-  venueDetails: null, // Unified structure: { studio: "", address: "", buildingName: "", landmark: "", streetAddress: "", pincode: "", city: "", state: "", mapAddress: "", selectedLocation: "" }
+  studioAssociation: null,
+  // Venue fields moved to top level
+  studio: "",
   building: "",
   street: "",
   city: "",
   state: "",
-  pincode: "",
+  landmark: "",
   mapAddress: "",
   geolocation: "",
   variants: [
     {
       date: null,
-      time: "",
+      startTime: null,
+      endTime: null,
+      time: "", // Keep for backward compatibility
       description: "",
       subvariants: [
         {
@@ -181,8 +186,39 @@ const WorkshopForm = ({
       if (formData.youtube_link) {
         setIsVideoLink(true);
       }
+      
+      // Handle studioAssociation for existing workshops
+      if (formData.studio_association) {
+        const studioId = formData.studio_association.split('-')[0];
+        setFormData((prev) => ({
+          ...prev,
+          studio: studioId,
+          venueType: "Studio",
+        }));
+      }
     }
   }, [isUpdating, formData]);
+
+  // Handle studio selection when studios are loaded and we have a studioAssociation
+  useEffect(() => {
+    if (studios.length > 0 && formData.studio && isUpdating) {
+      const selectedStudio = studios.find(studio => studio.id === formData.studio);
+      
+      if (selectedStudio) {
+        setFormData((prev) => ({
+          ...prev,
+          building: selectedStudio.buildingName || "",
+          street: selectedStudio.street || "",
+          city: selectedStudio.city || "",
+          state: selectedStudio.state || "",
+          landmark: selectedStudio.landmark || "",
+          mapAddress: selectedStudio.mapAddress || "",
+          geolocation: selectedStudio.geolocation && selectedStudio.geolocation.lat && selectedStudio.geolocation.lng ? 
+            `${selectedStudio.geolocation.lat},${selectedStudio.geolocation.lng}` : null,
+        }));
+      }
+    }
+  }, [studios, formData.studio, isUpdating]);
 
   useEffect(() => {
     const validateCreatorEmailAndFetchStudios = async () => {
@@ -269,30 +305,16 @@ const WorkshopForm = ({
     setFormData((prev) => ({
       ...prev,
       venueType,
-      venueDetails:
-        venueType === "Studio"
-          ? {
-              studio: "",
-              address: "",
-              buildingName: "",
-              landmark: "",
-              streetAddress: "",
-              pincode: "",
-              city: "",
-              state: "",
-              mapAddress: "",
-              selectedLocation: null,
-            }
-          : {
-              buildingName: "",
-              landmark: "",
-              streetAddress: "",
-              pincode: "",
-              city: "",
-              state: "",
-              mapAddress: "",
-              selectedLocation: null,
-            },
+      // Reset venue fields when changing venue type
+      studio: "",
+      building: "",
+      street: "",
+      city: "",
+      state: "",
+      landmark: "",
+      mapAddress: "",
+      geolocation: "",
+      studioAssociation: null,
     }));
   };
 
@@ -305,64 +327,29 @@ const WorkshopForm = ({
     if (selectedStudio) {
       setFormData((prev) => ({
         ...prev,
-        venueDetails: {
-          studio: studioId,
-          address: "",
-          buildingName: selectedStudio.buildingName || "",
-          landmark: selectedStudio.landmark || "",
-          streetAddress: selectedStudio.street || "",
-          pincode: selectedStudio.pincode || "",
-          city: selectedStudio.city || "",
-          state: selectedStudio.state || "",
-          mapAddress: `${selectedStudio.buildingName || ""}, ${
-            selectedStudio.street
-          }, ${selectedStudio.city}, ${selectedStudio.state}, ${
-            selectedStudio.country
-          } - ${selectedStudio.pincode}`,
-          selectedLocation: selectedStudio.geolocation ? 
-            `${selectedStudio.geolocation.lat},${selectedStudio.geolocation.lng}` : null,
-        },
-        // Map studio data to main form fields
+        studio: studioId,
         building: selectedStudio.buildingName || "",
         street: selectedStudio.street || "",
         city: selectedStudio.city || "",
         state: selectedStudio.state || "",
-        pincode: selectedStudio.pincode || "",
-        mapAddress: `${selectedStudio.buildingName || ""}, ${
-          selectedStudio.street
-        }, ${selectedStudio.city}, ${selectedStudio.state}, ${
-          selectedStudio.country
-        } - ${selectedStudio.pincode}`,
-        // Map geolocation data
-        geolocation: selectedStudio.geolocation ? 
+        landmark: selectedStudio.landmark || "",
+        mapAddress: selectedStudio.mapAddress || "",
+        geolocation: selectedStudio.geolocation && selectedStudio.geolocation.lat && selectedStudio.geolocation.lng ? 
           `${selectedStudio.geolocation.lat},${selectedStudio.geolocation.lng}` : null,
+        studioAssociation: `${studioId}-${selectedStudio.studioName}`,
       }));
     } else {
       setFormData((prev) => ({
         ...prev,
-        venueDetails: {
-          studio: "",
-          address: "",
-          buildingName: "",
-          landmark: "",
-          streetAddress: "",
-          pincode: "",
-          city: "",
-          state: "",
-          mapAddress: "",
-          selectedLocation: null,
-        },
-        // Clear main form fields when no studio selected
+        studio: "",
         building: "",
         street: "",
         city: "",
         state: "",
-        pincode: "",
+        landmark: "",
         mapAddress: "",
-        geolocation: {
-          lat: null,
-          lng: null,
-        },
+        geolocation: "",
+        studioAssociation: null,
       }));
     }
   };
@@ -371,8 +358,7 @@ const WorkshopForm = ({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      venueDetails: { ...prev.venueDetails, [name]: value },
-      [name]: value, // Also update the main form data
+      [name]: value,
     }));
   };
 
@@ -391,13 +377,12 @@ const WorkshopForm = ({
         return false;
       }
 
-      // Check venue-specific fields - unified address fields for both venue types
+      // Check venue-specific fields
       if (formData.venueType === "Studio") {
-        if (!formData.venueDetails?.studio || !formData.building || !formData.street || !formData.city) {
+        if (!formData.studio || !formData.building || !formData.street || !formData.city) {
           return false;
         }
       } else if (formData.venueType === "Independent") {
-        // Use unified address fields for Independent venues too
         if (!formData.building || !formData.street || !formData.city) {
           return false;
         }
@@ -422,7 +407,8 @@ const WorkshopForm = ({
       for (const variant of formData.variants) {
         if (
           !variant.date ||
-          !variant.time ||
+          !variant.startTime ||
+          !variant.endTime ||
           !variant.description ||
           !variant.subvariants?.length
         ) {
@@ -484,32 +470,20 @@ const WorkshopForm = ({
           ? dayjs(formData.end_date).format("YYYY-MM-DD")
           : "",
         creator_email: formData.creator_email || formData.creatorEmail,
-        // Unified venue transformation for both Studio and Independent
-        ...(formData.venueDetails
-          ? {
-              building: formData.venueDetails.buildingName || formData.building || "",
-              street: formData.venueDetails.streetAddress || formData.street || "",
-              city: formData.venueDetails.city || formData.city || "",
-              state: formData.venueDetails.state || formData.state || "",
-              pincode: formData.venueDetails.pincode || formData.pincode || "",
-              geolocation: formData.venueDetails.selectedLocation || formData.geolocation || "",
-              mapAddress: formData.venueDetails.mapAddress || formData.mapAddress || "",
-            }
-          : {
-              building: formData.building || "",
-              street: formData.street || "",
-              city: formData.city || "",
-              state: formData.state || "",
-              pincode: formData.pincode || "",
-              geolocation: formData.geolocation || "",
-              mapAddress: formData.mapAddress || "",
-            }),
+        studio_association: formData.studioAssociation,
+        // Venue fields moved to top level
+        building: formData.building || "",
+        street: formData.street || "",
+        city: formData.city || "",
+        landmark: formData.landmark || "",
+        geolocation: formData.geolocation || "",
+        map_address: formData.mapAddress || "",
       };
 
       const transformedVariants = formData.variants.map((variant, index) => ({
         variant_id: `NEW_${index + 1}`,
         date: variant.date ? dayjs(variant.date).format("YYYY-MM-DD") : "",
-        time: variant.time || "",
+        time: variant.startTime && variant.endTime ? `${variant.startTime}-${variant.endTime}` : "",
         description: variant.description,
         subvariants: variant.subvariants.map((sub, pIndex) => ({
           subvariant_id: `NEW_${index}_${pIndex + 1}`,
@@ -990,9 +964,9 @@ const WorkshopForm = ({
                         sx={{ height: FORM_FIELD_HEIGHT }}
                       >
                         <MenuItem value="">Select level</MenuItem>
-                        {Object.values(LEVELS).map((level, index) => (
-                          <MenuItem key={index} value={level}>
-                            {level}
+                        {Object.entries(LEVELS).map(([key, value]) => (
+                          <MenuItem key={key} value={key}>
+                            {value}
                           </MenuItem>
                         ))}
                       </Select>
@@ -1098,7 +1072,7 @@ const WorkshopForm = ({
                       <FormControl fullWidth>
                         <Select
                           name="studio"
-                          value={formData.venueDetails?.studio || ""}
+                          value={formData.studio || ""}
                           onChange={handleStudioChange}
                           displayEmpty
                           sx={{ height: FORM_FIELD_HEIGHT }}
@@ -1128,7 +1102,7 @@ const WorkshopForm = ({
                           })}
                         </Select>
                       </FormControl>
-                      {formData.venueDetails?.studio && (
+                      {formData.studio && (
                         <Box sx={{ mt: 1 }}>
                           <Typography variant="body2" color="success.main">
                             ✓ Studio details loaded below
@@ -1138,8 +1112,8 @@ const WorkshopForm = ({
                     </Grid>
                   )}
 
-1                  {/* Show address fields when editing or when studio is selected */}
-                  {(isUpdating || (formData.venueType === "Studio" && formData.venueDetails?.studio)) && (
+                  {/* Show address fields when editing or when studio is selected */}
+                  {(isUpdating || (formData.venueType === "Studio" && formData.studio)) && (
                     <>
                       <Grid item xs={12} sm={6}>
                         <Typography
@@ -1210,6 +1184,52 @@ const WorkshopForm = ({
                           onChange={isUpdating ? handleChange : undefined}
                         />
                       </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontSize: "16px",
+                            color: "black",
+                          }}
+                          gutterBottom
+                        >
+                          State
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          name="state"
+                          sx={{ height: FORM_FIELD_HEIGHT }}
+                          variant="outlined"
+                          InputLabelProps={{ shrink: false }}
+                          placeholder={isUpdating ? "State" : "State from selected studio"}
+                          value={formData.state}
+                          disabled={!isUpdating}
+                          onChange={isUpdating ? handleChange : undefined}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontSize: "16px",
+                            color: "black",
+                          }}
+                          gutterBottom
+                        >
+                          Landmark (Optional)
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          name="landmark"
+                          sx={{ height: FORM_FIELD_HEIGHT }}
+                          variant="outlined"
+                          InputLabelProps={{ shrink: false }}
+                          placeholder={isUpdating ? "Enter landmark (optional)" : "Landmark from selected studio"}
+                          value={formData.landmark}
+                          disabled={!isUpdating}
+                          onChange={isUpdating ? handleChange : undefined}
+                        />
+                      </Grid>
 
                       {formData.geolocation && (
                         <Grid item xs={12}>
@@ -1262,6 +1282,7 @@ const WorkshopForm = ({
                 onSubmit={handleAddWorkshop}
                 formData={formData}
                 setFormData={setFormData}
+                isSubmitting={isSubmitting}
               />
             )}
           </Paper>

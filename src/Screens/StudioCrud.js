@@ -16,10 +16,22 @@ import {
   TableBody,
   Paper,
   Grid,
+  Card,
+  CardContent,
+  ToggleButton,
+  ToggleButtonGroup,
+  Divider,
+  Autocomplete,
 } from "@mui/material";
+import {
+  Search as SearchIcon,
+  Email as EmailIcon,
+  LocationOn as LocationIcon,
+} from "@mui/icons-material";
 import axios from "axios";
 import AddStudio from "../Components/studio-crud/AddStudio";
 import { updateDaysFormat } from "../utils/mapping";
+import citiesData from "../cities.json";
 
 const WINDOWS = {
   DEFAULT: "default",
@@ -331,70 +343,181 @@ function StudioCrud() {
               fontFamily: "sans-serif",
             }}
           >
-            <Typography variant="h5" gutterBottom>
-              Studio CRUD
-            </Typography>
-
             {/* Mode Select */}
-            <FormControl component="fieldset">
-              <RadioGroup
-                row
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'text.secondary' }}>
+                Environment
+              </Typography>
+              <ToggleButtonGroup
                 value={mode}
+                exclusive
                 onChange={(e) => setMode(e.target.value)}
+                aria-label="environment"
+                fullWidth
+                sx={{ 
+                  '& .MuiToggleButton-root': {
+                    flex: 1,
+                    py: 1.5,
+                    border: '2px solid',
+                    borderColor: 'divider',
+                    '&.Mui-selected': {
+                      backgroundColor: mode === 'STAGING' ? 'warning.main' : 'success.main',
+                      color: 'white',
+                      borderColor: mode === 'STAGING' ? 'warning.main' : 'success.main',
+                      '&:hover': {
+                        backgroundColor: mode === 'STAGING' ? 'warning.dark' : 'success.dark',
+                      }
+                    }
+                  }
+                }}
               >
-                <FormControlLabel
-                  value="STAGING"
-                  control={<Radio />}
-                  label="Staging"
-                />
-                <FormControlLabel
-                  value="PRODUCTION"
-                  control={<Radio />}
-                  label="Production"
-                />
-              </RadioGroup>
-            </FormControl>
+                <ToggleButton value="STAGING" aria-label="staging">
+                  Staging
+                </ToggleButton>
+                <ToggleButton value="PRODUCTION" aria-label="production">
+                  Production
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
-            <br />
+            {/* Search Section */}
+            <Card sx={{ mb: 3, boxShadow: 2 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <SearchIcon sx={{ mr: 1, color: 'primary.main' }} />
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    Search Studios
+                  </Typography>
+                </Box>
 
-            {/* Search Type */}
-            <FormControl component="fieldset" sx={{ mb: 2 }}>
-              <RadioGroup
-                row
-                value={searchType}
-                onChange={(e) => changeSearchMode(e)}
-              >
-                <FormControlLabel
-                  value="EMAIL"
-                  control={<Radio />}
-                  label="Search by Email"
-                />
-                <FormControlLabel
-                  value="CITY"
-                  control={<Radio />}
-                  label="Search by City"
-                />
-              </RadioGroup>
-            </FormControl>
+                {/* Search Type */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'text.secondary' }}>
+                    Search Type
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={searchType}
+                    exclusive
+                    onChange={changeSearchMode}
+                    aria-label="search type"
+                    fullWidth
+                    sx={{ 
+                      '& .MuiToggleButton-root': {
+                        flex: 1,
+                        py: 1.5,
+                        border: '2px solid',
+                        borderColor: 'divider',
+                        '&.Mui-selected': {
+                          backgroundColor: 'primary.main',
+                          color: 'white',
+                          borderColor: 'primary.main',
+                          '&:hover': {
+                            backgroundColor: 'primary.dark',
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <ToggleButton value="EMAIL" aria-label="search by email">
+                      <EmailIcon sx={{ mr: 1 }} />
+                      Search by Email
+                    </ToggleButton>
+                    <ToggleButton value="CITY" aria-label="search by city">
+                      <LocationIcon sx={{ mr: 1 }} />
+                      Search by City
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
 
-            <TextField
-              label={`Enter ${searchType}`}
-              variant="outlined"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-              sx={{ mb: 2, width: "100%" }}
-            />
+                {/* Search Input */}
+                <Box sx={{ mb: 3 }}>
+                  {searchType === "EMAIL" ? (
+                    <TextField
+                      label="Enter Creator Email"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2,
+                        }
+                      }}
+                      InputProps={{
+                        startAdornment: <EmailIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                      }}
+                    />
+                  ) : (
+                    <Autocomplete
+                      options={citiesData.cities}
+                      value={searchQuery}
+                      onChange={(event, newValue) => {
+                        setSearchQuery(newValue || "");
+                      }}
+                      onInputChange={(event, newInputValue) => {
+                        setSearchQuery(newInputValue);
+                      }}
+                      freeSolo
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Select or Enter City Name"
+                          variant="outlined"
+                          sx={{ 
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 2,
+                            }
+                          }}
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: <LocationIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                          }}
+                        />
+                      )}
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props}>
+                          <LocationIcon sx={{ mr: 1, color: 'text.secondary', fontSize: '1rem' }} />
+                          {option}
+                        </Box>
+                      )}
+                      sx={{
+                        '& .MuiAutocomplete-inputRoot': {
+                          paddingRight: '14px !important',
+                        }
+                      }}
+                    />
+                  )}
+                </Box>
 
-            <Button
-              variant="contained"
-              color="primary"
-              disabled={submitting}
-              onClick={handleSearch}
-              fullWidth
-            >
-              {submitting ? "Searching..." : "Search"}
-            </Button>
+                <Divider sx={{ mb: 3 }} />
+
+                {/* Search Button */}
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={submitting}
+                  onClick={handleSearch}
+                  fullWidth
+                  size="large"
+                  startIcon={<SearchIcon />}
+                  sx={{
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    textTransform: 'none',
+                    boxShadow: 2,
+                    '&:hover': {
+                      boxShadow: 4,
+                      transform: 'translateY(-1px)'
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  {submitting ? "Searching..." : "Search Studios"}
+                </Button>
+              </CardContent>
+            </Card>
 
             {searchType === "EMAIL" && userDetails && isSubmited && (
               <Box sx={{ display: "flex", justifyContent: "end", mt: 2 }}>

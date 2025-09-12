@@ -18,12 +18,61 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 const FORM_FIELD_HEIGHT = 56;
 
+// Helper function to format time to HH:mm:ss (ensure seconds are present)
+const formatTimeToHHMMSS = (timeStr) => {
+  if (!timeStr) return null;
+  if (timeStr.includes(':')) {
+    const parts = timeStr.split(':');
+    if (parts.length === 2) {
+      // Add seconds if not present
+      return `${parts[0]}:${parts[1]}:00`;
+    } else if (parts.length === 3) {
+      // Keep existing format with seconds
+      return timeStr;
+    }
+  }
+  return timeStr;
+};
+
 const WorkshopStep2EventInfo = ({
   onBack,
   onSubmit,
   formData,
   setFormData,
+  isSubmitting,
 }) => {
+  // Parse existing time data when editing
+  React.useEffect(() => {
+    if (formData.variants) {
+      const updatedVariants = formData.variants.map(variant => {
+        if (variant.time && !variant.startTime && !variant.endTime) {
+          // Parse existing time format (e.g., "09:00:00-17:00:00" or "09:00-17:00")
+          const timeParts = variant.time.split('-');
+          if (timeParts.length === 2) {
+            const startTime = timeParts[0].trim();
+            const endTime = timeParts[1].trim();
+            
+            return {
+              ...variant,
+              startTime: formatTimeToHHMMSS(startTime),
+              endTime: formatTimeToHHMMSS(endTime)
+            };
+          }
+        }
+        return variant;
+      });
+      
+      // Only update if there were changes
+      const hasChanges = updatedVariants.some((variant, index) => 
+        variant.startTime !== formData.variants[index].startTime || 
+        variant.endTime !== formData.variants[index].endTime
+      );
+      
+      if (hasChanges) {
+        setFormData(prev => ({ ...prev, variants: updatedVariants }));
+      }
+    }
+  }, [formData.variants, setFormData]);
   const handleVariantChange = (index, field) => (e) => {
     const value = e?.target?.value ?? e;
     const updatedVariants = [...formData.variants];
@@ -45,7 +94,9 @@ const WorkshopStep2EventInfo = ({
         ...prev.variants,
         {
           date: null,
-          time: "",
+          startTime: null,
+          endTime: null,
+          time: "", // Keep for backward compatibility
           description: "",
           subvariants: [
             {
@@ -136,7 +187,7 @@ const WorkshopStep2EventInfo = ({
               }}
             >
               <Grid container rowSpacing={3} columnSpacing={2}>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <Typography
                     variant="body1"
                     sx={{
@@ -165,7 +216,7 @@ const WorkshopStep2EventInfo = ({
                   </LocalizationProvider>
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <Typography
                     variant="body1"
                     sx={{
@@ -174,21 +225,64 @@ const WorkshopStep2EventInfo = ({
                     }}
                     gutterBottom
                   >
-                    Time (e.g., 09:00-17:00)
+                    Start Time
                   </Typography>
-                  <TextField
-                    fullWidth
-                    name="time"
-                    value={variant.time}
-                    onChange={handleVariantChange(variantIndex, "time")}
-                    sx={{ height: FORM_FIELD_HEIGHT }}
-                    variant="outlined"
-                    InputLabelProps={{ shrink: false }}
-                    placeholder="09:00-17:00"
-                  />
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <TimePicker
+                      name="startTime"
+                      sx={{ width: "100%" }}
+                      value={variant.startTime ? dayjs(variant.startTime, 'HH:mm:ss') : null}
+                      onChange={(time) => {
+                        const updatedVariants = [...formData.variants];
+                        updatedVariants[variantIndex].startTime = time ? time.format('HH:mm:ss') : null;
+                        setFormData((prev) => ({ ...prev, variants: updatedVariants }));
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          sx={{ height: FORM_FIELD_HEIGHT }}
+                          variant="outlined"
+                        />
+                      )}
+                    />
+                  </LocalizationProvider>
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontSize: "16px",
+                      color: "black",
+                    }}
+                    gutterBottom
+                  >
+                    End Time
+                  </Typography>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <TimePicker
+                      name="endTime"
+                      sx={{ width: "100%" }}
+                      value={variant.endTime ? dayjs(variant.endTime, 'HH:mm:ss') : null}
+                      onChange={(time) => {
+                        const updatedVariants = [...formData.variants];
+                        updatedVariants[variantIndex].endTime = time ? time.format('HH:mm:ss') : null;
+                        setFormData((prev) => ({ ...prev, variants: updatedVariants }));
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          sx={{ height: FORM_FIELD_HEIGHT }}
+                          variant="outlined"
+                        />
+                      )}
+                    />
+                  </LocalizationProvider>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
                   <Typography
                     variant="body1"
                     sx={{
@@ -210,6 +304,30 @@ const WorkshopStep2EventInfo = ({
                     placeholder="Description"
                   />
                 </Grid>
+
+                {/* Display combined time range */}
+                {variant.startTime && variant.endTime && (
+                  <Grid item xs={12}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        bgcolor: "#f5f5f5",
+                        borderRadius: 1,
+                        border: "1px solid #e0e0e0",
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#666",
+                          fontSize: "14px",
+                        }}
+                      >
+                        Time Range: {variant.startTime} - {variant.endTime}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
 
                 <Grid item xs={12}>
                   <Box
@@ -388,6 +506,7 @@ const WorkshopStep2EventInfo = ({
           <Button
             variant="contained"
             type="button"
+            disabled={isSubmitting}
             sx={{
               bgcolor: "#67569E",
               color: "white",
@@ -396,7 +515,7 @@ const WorkshopStep2EventInfo = ({
             }}
             onClick={onSubmit}
           >
-            Submit Workshop
+            {isSubmitting ? "Submitting..." : "Submit Workshop"}
           </Button>
         </Box>
       </Grid>
@@ -405,4 +524,3 @@ const WorkshopStep2EventInfo = ({
 };
 
 export default WorkshopStep2EventInfo;
-
