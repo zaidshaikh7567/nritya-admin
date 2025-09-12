@@ -369,7 +369,7 @@ const WorkshopForm = ({
         !formData.creator_email ||
         !formData.description ||
         !formData.dance_styles?.length ||
-        !formData.level ||
+        (!formData && formData.level !== "") ||
         //!formData.venueType ||
         !formData.start_date ||
         !formData.end_date
