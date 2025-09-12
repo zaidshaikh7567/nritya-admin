@@ -45,10 +45,10 @@ function App() {
       <Loader />
       <ThemeProvider theme={darkMode ? darkTheme : ""}>
         <CssBaseline />
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <Header />
           <br></br>
-          <main className="py-1">
+          <main className="py-1" style={{ flex: 1 }}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route element={<ProtectedRoutes />}>
@@ -69,6 +69,7 @@ function App() {
               </Route>
             </Routes>
           </main>
+          <Footer />
         </div>
       </ThemeProvider>
     </HashRouter>
